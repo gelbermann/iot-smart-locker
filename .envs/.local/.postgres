@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=iot_smart_locker_no_docker
+POSTGRES_USER=NbBAYbYMWbjpJpmfVAffsXSonxxCQOeu
+POSTGRES_PASSWORD=XPEx0jQuJXUk5cJYQXhtjV9O5ih7JeTF0sPeEXcBAateEOiRSVAJEh4XSRdAxRgG
