@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Locker allocated{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-center">
+    <h1>Locker allocated!</h1>
+  </div>
+
+  <div class="d-flex justify-content-center">
+    <h6>Deposit package, and send the following QR code to the package's recipient:</h6>
+  </div>
+
+  {% include "lockers/components/qr.html" %}
+
+{% endblock %}

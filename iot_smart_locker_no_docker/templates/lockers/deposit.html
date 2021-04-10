@@ -4,7 +4,7 @@
 {% block title %}Deposit Package{% endblock %}
 
 {% block content %}
-  <h1></h1>
+  <h1>Enter recipient information:</h1>
   <form class="form-horizontal" method="post" action="{% url 'lockers:deposit' %}">
     {% csrf_token %}
     {{ form|crispy }}
