@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import TemplateView
 
 from iot_smart_locker_no_docker.lockers.views import (
     LockerDepositRequestView,
@@ -13,5 +14,10 @@ urlpatterns = [
         "deposit/success/<int:qr_id>/",
         view=LockerDepositSuccessView.as_view(),
         name="deposit_success",
+    ),
+    path(
+        "deposit/failure/",
+        view=TemplateView.as_view(template_name="lockers/general_error.html"),
+        name="deposit_failure",
     ),
 ]
