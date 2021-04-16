@@ -4,6 +4,8 @@ from allauth.account.models import EmailAddress
 from django import forms
 from django.contrib.auth.models import User
 
+from iot_smart_locker_no_docker.lockers.models import QR, PersonalQR
+
 
 class LockerDepositForm(forms.Form):
     recipient_email = forms.EmailField(
@@ -13,6 +15,8 @@ class LockerDepositForm(forms.Form):
     )
 
     def is_valid(self) -> bool:
+        # TODO Read here on how to communicate validation errors to user
+        #  https://stackoverflow.com/questions/14647723/django-forms-if-not-valid-show-form-with-error-message
         return (
             super().is_valid()
             and self._recipient_exists()
@@ -35,3 +39,29 @@ class LockerDepositForm(forms.Form):
         #  update method to check if the user who made the request has permission to make a deposit
         #  (another option: allow access to the "deposit" page only to users with permission
         return True
+
+
+class QRCreationForm(forms.ModelForm):
+    class Meta:
+        model = QR
+        fields = ["recipient", "locker"]
+        exclude = ["uuid"]
+
+
+class QRChangeForm(forms.ModelForm):
+    class Meta:
+        model = QR
+        fields = ["uuid", "recipient", "locker"]
+
+
+class PersonalQRCreationForm(forms.ModelForm):
+    class Meta:
+        model = PersonalQR
+        fields = ["recipient"]
+        exclude = ["uuid"]
+
+
+class PersonalQRChangeForm(forms.ModelForm):
+    class Meta:
+        model = PersonalQR
+        fields = ["uuid", "recipient"]

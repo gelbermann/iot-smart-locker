@@ -1,30 +1,33 @@
 import json
 import uuid
+from typing import Dict, Type
 
 import segno
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import Model
 
-User = get_user_model()
+User: Type[Model] = get_user_model()
 
 
 class Locker(models.Model):
     occupied = models.BooleanField(default=False)
 
 
-class QR(models.Model):
-    uuid = models.CharField(default="", max_length=50)
+class BaseQR(models.Model):
+    class Meta:
+        abstract = True
+
+    uuid = models.CharField(default="", max_length=50, unique=True)
     recipient = models.ForeignKey(
-        # TODO is `recipient` necessary? they display the QR to a camera, they don't do anything on the site itself
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-    )  # TODO on_delete=?
-    locker = models.ForeignKey(Locker, on_delete=models.PROTECT)  # TODO on_delete=?
+    )  # TODO what should be the on_delete policy?
 
-    @staticmethod
-    def create(recipient: User, locker: Locker):
-        return QR(uuid=uuid.uuid4().hex, recipient=recipient, locker=locker)
+    def save(self, *args, **kwargs) -> None:
+        self.uuid = uuid.uuid4().hex
+        super().save(*args, **kwargs)
 
     @property
     def qr(self):
@@ -32,13 +35,45 @@ class QR(models.Model):
         return segno.make(self.to_json())
 
     def to_json(self):
-        return json.dumps(
-            {
-                "uuid": self.uuid,
-                "recipient_id": self.recipient.id,
-                "locker_id": self.locker.id,
-            }
-        )
+        return json.dumps(self._get_json_dumpable())
+
+    def _get_json_dumpable(self):
+        return {
+            "uuid": self.uuid,
+            "recipient_id": self.recipient.id,
+        }
+
+    @staticmethod
+    def from_json(string):
+        data: Dict = json.loads(string)
+        unpacked_user: User = User.objects.filter(id=data["recipient_id"]).first()
+        return BaseQR.create(unpacked_user)
+
+
+class PersonalQR(BaseQR):
+    recipient = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,  # TODO what should be the on_delete policy?
+    )  # different from BaseQR.recipient by being a OneToOneField (which is the same as a ForeignKey with unique=True
+
+    @staticmethod
+    def create(recipient: User, *args, **kwargs):
+        return PersonalQR(uuid=uuid.uuid4().hex, recipient=recipient)
+
+
+class QR(BaseQR):
+    locker = models.ForeignKey(
+        Locker, on_delete=models.PROTECT
+    )  # TODO what should be the on_delete policy?
+
+    # @staticmethod
+    # def create(recipient: User, locker: Locker, *args, **kwargs):
+    #     return BaseQR(uuid=uuid.uuid4().hex, recipient=recipient, locker=locker)
+
+    def _get_json_dumpable(self) -> Dict:
+        data: Dict = super()._get_json_dumpable()
+        data["locker_id"] = self.locker.id
+        return data
 
     @staticmethod
     def from_json(string):
@@ -46,16 +81,3 @@ class QR(models.Model):
         unpacked_user = User.objects.filter(id=data["recipient_id"]).first()
         unpacked_locker = Locker.objects.filter(id=data["locker_id"])
         return QR.create(unpacked_user, unpacked_locker)
-
-
-# class History(models.Model):
-#     pass
-#     """
-#     Each row is a request to open a locker (for a depositor only? or for withdrawals too?)
-#
-#     TODO
-#       Possible fields:
-#         Fk to Locker
-#         Unique identifier which was included in the QR (timestamp?)
-#         User which prompted this history row (e.g. user who requested a locker to deposit in)
-#     """
