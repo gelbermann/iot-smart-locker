@@ -1,11 +1,14 @@
+from typing import List
+
 from django.core.mail import send_mail
+from django.db.models import QuerySet
 from django.template import loader
 
-from iot_smart_locker_no_docker.lockers.models import QR, Locker
+from iot_smart_locker_no_docker.lockers.models import BaseQR, Locker
 
 
 def get_unoccupied_locker():
-    available_lockers = Locker.objects.filter(occupied=False)
+    available_lockers: QuerySet = Locker.objects.filter(occupied=False)
     return available_lockers.first()
 
 
@@ -15,7 +18,7 @@ def toggle_locker_status(locker: Locker):
     pass
 
 
-def send_qr_via_email(qr: QR, target: str):
+def send_qr_via_email(qr: BaseQR, target: str):
     message: str = """
       Hi there! A package is waiting for you!
       Please come pick it up from Smart Locker.
@@ -32,6 +35,13 @@ def send_qr_via_email(qr: QR, target: str):
         html_message=html_message,
         fail_silently=False,
     )
+
+
+def request_to_open_multiple_lockers(lockers: List[Locker]) -> List[Locker]:
+    failed_to_open: List[Locker] = [
+        locker for locker in lockers if not request_to_open_locker(locker)
+    ]
+    return failed_to_open
 
 
 def request_to_open_locker(locker: Locker) -> bool:

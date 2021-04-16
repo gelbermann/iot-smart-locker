@@ -78,7 +78,6 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "iot_smart_locker_no_docker.users.apps.UsersConfig",
-    "iot_smart_locker_no_docker.qr.apps.QRConfig",
     "iot_smart_locker_no_docker.lockers.apps.LockersConfig",
     # Your stuff: custom apps go here
 ]
