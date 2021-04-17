@@ -4,6 +4,7 @@ from django.views.generic import TemplateView
 from iot_smart_locker_no_docker.lockers.api.views import (
     OpenLockersWithNFCView,
     OpenLockersWithPersonalQRView,
+    OpenSingleLockerWithQRView,
 )
 from iot_smart_locker_no_docker.lockers.views import (
     LockerDepositRequestView,
@@ -28,6 +29,11 @@ urlpatterns = [
     # API patterns:
     path(
         "api/collect/qr/",
+        view=OpenSingleLockerWithQRView.as_view(),
+        name="collect_with_qr",
+    ),
+    path(
+        "api/collect/personal_qr/",
         view=OpenLockersWithPersonalQRView.as_view(),
         name="collect_with_personal_qr",
     ),
