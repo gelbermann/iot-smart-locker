@@ -14,6 +14,9 @@ User: Type[Model] = get_user_model()
 class Locker(models.Model):
     occupied = models.BooleanField(default=False)
 
+    def __str__(self) -> str:
+        return f"{self.id}"
+
 
 class BaseQR(models.Model):
     class Meta:
@@ -65,10 +68,6 @@ class QR(BaseQR):
     locker = models.ForeignKey(
         Locker, on_delete=models.PROTECT
     )  # TODO what should be the on_delete policy?
-
-    # @staticmethod
-    # def create(recipient: User, locker: Locker, *args, **kwargs):
-    #     return BaseQR(uuid=uuid.uuid4().hex, recipient=recipient, locker=locker)
 
     def _get_json_dumpable(self) -> Dict:
         data: Dict = super()._get_json_dumpable()

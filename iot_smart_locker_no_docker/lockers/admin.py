@@ -14,6 +14,7 @@ from iot_smart_locker_no_docker.lockers.models import QR, Locker, PersonalQR
 @admin.register(Locker)
 class LockerAdmin(admin.ModelAdmin):
     actions = ["free_lockers"]
+    list_display = ["id", "occupied"]
 
     # @admin.action(description="Set selected lockers to 'unoccupied'")    # can only be used in django>=3.2
     def free_lockers(self, request, queryset):
@@ -39,6 +40,7 @@ class QRAdmin(admin.ModelAdmin):
     form = QRChangeForm
     add_form = QRCreationForm
     readonly_fields = ["uuid"]
+    list_display = ["recipient", "locker", "uuid"]
 
 
 @admin.register(PersonalQR)
@@ -46,3 +48,4 @@ class PersonalQRAdmin(admin.ModelAdmin):
     form = PersonalQRChangeForm
     add_form = PersonalQRCreationForm
     readonly_fields = ["uuid"]
+    list_display = ["recipient", "uuid"]
