@@ -1,24 +1,45 @@
+import logging
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import List
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import QuerySet
+from django.http import HttpResponse
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+    renderer_classes,
+)
+from rest_framework.permissions import AllowAny
+from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .. import utils
 from ..models import QR, Locker, PersonalQR
 
+logger = logging.getLogger("django")
 
-class OpenBulkLockersAbstractView(LoginRequiredMixin, APIView, ABC):
+
+class MessageTexts:
+    SUCCESS = "OK"
+    FAILURE = "Failed to open locker {}"
+
+
+@permission_classes((AllowAny,))
+class OpenBulkLockersAbstractView(APIView, ABC):
     class MessageTexts:
         SUCCESS = "OK"
         FAILURE = "Some lockers failed to open"
         FAILED_OPEN_LOCKER = "Failed to open locker {}"
 
-    def get(self, request):
+    def post(self, request):
+        # TODO: extract qr data from the "request.data" dict:
+        #  as json, if we go with textual data
+        #  or as an image from which we extract the qr and its data, if we go with image streaming
         lockers_with_package: List[Locker] = self._get_lockers_with_packages()
         lockers_failed_to_open: List[Locker] = self._open_lockers(lockers_with_package)
         response = self._handle_response(lockers_failed_to_open)
@@ -73,40 +94,64 @@ class OpenLockersWithNFCView(OpenBulkLockersAbstractView):
         pass
 
 
-class OpenSingleLockerWithQRView(LoginRequiredMixin, APIView):
-    class MessageTexts:
-        SUCCESS = "OK"
-        FAILURE = "Failed to open locker {}"
+@api_view(("GET",))
+@authentication_classes([])
+@permission_classes([])
+@renderer_classes((TemplateHTMLRenderer, JSONRenderer))
+def open_single_locker_with_qr(request, uuid: str):
+    # TODO add frontend-access for this view?
 
-    def get(self, request):
-        locker_with_package: Locker = self._get_locker_with_packages()
-        success: bool = self._open_locker(locker_with_package)
-        response = self._handle_response(locker_with_package, success)
-        self._cleanup()
-        return Response(response)
+    logger.info("")
+    logger.info(
+        f"=== open_single_locker_with_qr [{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] ==="
+    )
+    logger.info(f"UUID: {uuid}")
+    # return HttpResponse(status=200)
 
-    def _get_locker_with_packages(self) -> Locker:
-        qr: QR = self._get_qr()
-        return qr.locker
+    try:
+        qr: QR = _find_qr(uuid)
+        if qr is None:
+            logger.warning(
+                f"No QR in database for UUID {uuid}, returning error code 500"
+            )
+            return HttpResponse(status=500)
 
-    def _open_locker(self, locker_with_package: Locker) -> bool:
-        return utils.request_to_open_locker(locker_with_package)
+        locker: Locker = qr.locker
+        logger.info(f"Found relevant locker: #{locker.id}")
 
-    def _handle_response(self, locker_with_package: Locker, success: bool) -> str:
-        if not success:
-            response: str = self.MessageTexts.FAILURE.format(locker_with_package.id)
-            messages.warning(self.request, response)
-        else:
-            response: str = self.MessageTexts.SUCCESS
-        return response
+        success: bool = _open_locker(locker)
 
-    def _cleanup(self) -> None:
-        consumed_qr: QR = self._get_qr()
-        consumed_qr.delete()
+        # response: str = _handle_response(request, locker, success)
+        _handle_response(request, locker, success)
+        _cleanup(qr)
+    except Exception as e:
+        logger.exception(e)
+        return HttpResponse(status=500)
 
-    def _get_qr(self) -> QR:
-        if settings.DEBUG:  # TODO remove this if
-            consumed_qr: QR = QR.objects.first()
-        else:
-            consumed_qr: QR = QR.from_json(self.request.session["qr"])
-        return consumed_qr
+    # return Response(response)
+    return HttpResponse(status=200)
+
+
+def _find_qr(qr_uuid: str) -> QR:
+    qr: QR = QR.objects.get(uuid=qr_uuid)
+    return qr
+
+
+def _open_locker(locker_with_package: Locker) -> bool:
+    return utils.request_to_open_locker(locker_with_package)
+
+
+def _handle_response(request, locker: Locker, success: bool) -> str:
+    """Handles displaying a response to the user if they request to open a locker using the website"""
+    if not success:
+        response: str = MessageTexts.FAILURE.format(locker.id)
+        messages.warning(request, response)
+    else:
+        response: str = MessageTexts.SUCCESS
+    return response
+
+
+def _cleanup(consumed_qr: QR) -> None:
+    consumed_qr.locker.occupied = False
+    consumed_qr.locker.save()
+    consumed_qr.delete()

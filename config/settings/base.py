@@ -252,9 +252,21 @@ LOGGING = {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-        }
+        },
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": f"{ROOT_DIR}/logs/debug.log",
+        },
     },
     "root": {"level": "INFO", "handlers": ["console"]},
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
 }
 
 
@@ -277,6 +289,7 @@ SOCIALACCOUNT_ADAPTER = "iot_smart_locker_no_docker.users.adapters.SocialAccount
 # django-rest-framework - https://www.django-rest-framework.org/api-guide/settings/
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.TokenAuthentication",
     ),
@@ -287,3 +300,5 @@ REST_FRAMEWORK = {
 CORS_URLS_REGEX = r"^/api/.*$"
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+APPEND_SLASH = False
