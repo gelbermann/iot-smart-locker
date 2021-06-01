@@ -1,3 +1,4 @@
+from time import sleep
 from typing import List
 
 from django.core.mail import send_mail
@@ -38,9 +39,14 @@ def send_qr_via_email(qr: BaseQR, target: str):
 
 
 def request_to_open_multiple_lockers(lockers: List[Locker]) -> List[Locker]:
-    failed_to_open: List[Locker] = [
-        locker for locker in lockers if not request_to_open_locker(locker)
-    ]
+    failed_to_open: List[Locker] = []
+
+    for locker in lockers:
+        success: bool = request_to_open_locker(locker)
+        if not success:
+            failed_to_open += locker
+        sleep(1)  # give HW time to catch up
+
     return failed_to_open
 
 

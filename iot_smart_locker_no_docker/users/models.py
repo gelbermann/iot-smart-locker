@@ -12,6 +12,8 @@ class User(AbstractUser):
     first_name = None  # type: ignore
     last_name = None  # type: ignore
 
+    nfc_serial = CharField(max_length=255, default="")
+
     def get_absolute_url(self):
         """Get url for user's detail view.
 
