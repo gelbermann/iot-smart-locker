@@ -1,22 +1,35 @@
-from time import sleep
-from typing import List
+from typing import Tuple, Union
 
 from django.core.mail import send_mail
 from django.db.models import QuerySet
 from django.template import loader
 
-from iot_smart_locker_no_docker.lockers.models import BaseQR, Locker
+from iot_smart_locker_no_docker.lockers.models import QR, BaseQR, Locker, User
 
 
-def get_unoccupied_locker():
+def find_locker_for_deposit(recipient: User) -> Tuple[Locker, Union[QR, None]]:
+    """There should only be one QR per user.
+    If one exists, return its locker.
+    If one doesn't exist, allocate locker."""
+    qr: QR = QR.objects.get(recipient=recipient)
+    if qr is None:
+        return get_unoccupied_locker(), None
+    return qr.locker, qr
+
+
+def get_unoccupied_locker() -> Locker:
     available_lockers: QuerySet = Locker.objects.filter(occupied=False)
     return available_lockers.first()
 
 
-def toggle_locker_status(locker: Locker):
-    locker.occupied = not locker.occupied
+def occupy_locker(locker: Locker) -> None:
+    locker.occupied = True
     locker.save()
-    pass
+
+
+def free_locker(locker: Locker) -> None:
+    locker.occupied = False
+    locker.save()
 
 
 def send_qr_via_email(qr: BaseQR, target: str):
@@ -38,36 +51,7 @@ def send_qr_via_email(qr: BaseQR, target: str):
     )
 
 
-def request_to_open_multiple_lockers(lockers: List[Locker]) -> List[Locker]:
-    failed_to_open: List[Locker] = []
-
-    for locker in lockers:
-        success: bool = request_to_open_locker(locker)
-        if not success:
-            failed_to_open += locker
-        sleep(1)  # give HW time to catch up
-
-    return failed_to_open
-
-
-def request_to_open_locker(locker: Locker) -> bool:
-    # TODO: https://realpython.com/api-integration-in-python/
-    #   0) DECIDE WITH TEAM ON API FOR ESP32.
-    #   1) send REST request
-    #   2) consider waiting for a response.
-    #      if waiting, then return value is according to response.
-    #      if not waiting, then return value is according to message sent/not sent.
-    #   3) remove stub
-
-    # task: Dict = {"TBD": "TBD"}
-    # url: str = "TBD"
-    # resp: requests.Response = requests.post(url, task)
-    # if resp.status_code != 200:
-    #     # TODO notify about error somehow
-    #     return False
-
-    return _request_to_open_locker_stub()
-
-
-def _request_to_open_locker_stub():
-    return True
+def request_to_open_locker(locker: Locker):
+    # TODO Send a request for ESP32CAM to open a locker - CONTINUE HERE!!!!
+    # implement in ESP side with: https://randomnerdtutorials.com/esp32-web-server-arduino-ide/
+    pass

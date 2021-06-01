@@ -1,9 +1,7 @@
 import logging
 from datetime import datetime
-from typing import List
 
 from django.contrib import messages
-from django.db.models import QuerySet
 from django.http import HttpResponse
 from rest_framework.decorators import (
     api_view,
@@ -49,13 +47,14 @@ def open_single_locker_with_qr(request, uuid: str):
         locker: Locker = qr.locker
         logger.info(f"Found relevant locker: #{locker.id}")
 
-        success: bool = _open_locker(locker)
-
-        _handle_response(request, locker, success)
+        response_code: int = (
+            200 + locker.id
+        )  # this is our own convention, which the ESP32CAM needs to know how to read
         _cleanup(qr)
+
     except Exception as e:
         logger.exception(e)
-        return HttpResponse(status=500)
+        return HttpResponse(status=response_code)
 
     return HttpResponse(status=200)
 
@@ -81,25 +80,24 @@ def open_single_locker_with_nfc(request, serial: str):
             )
             return HttpResponse(status=500)
 
-        lockers: List[Locker] = _find_lockers(user)
-        logger.info(
-            f"Found relevant lockers: {' '.join(('#' + str(l.id) for l in lockers))}"
-        )
-
-        lockers_failed_to_open: List[Locker] = _open_lockers(lockers)
-        if len(lockers_failed_to_open) > 0:
+        locker: Locker = _find_locker(user)
+        if locker is None:
             logger.warning(
-                f"Failed to open lockers: {' '.join(('#' + str(l.id) for l in lockers_failed_to_open))}"
+                f"No locker in database waiting for user {user.username}, returning error code 500"
             )
+            return HttpResponse(status=500)
+        logger.info(f"Found relevant locker: #{locker.id}")
 
-        _handle_response_multiple(request, lockers_failed_to_open)
-        _cleanup_multiple(list(set(lockers) - set(lockers_failed_to_open)))
+        response_code: int = (
+            200 + locker.id
+        )  # this is our own convention, which the ESP32CAM needs to know how to read
+        _cleanup_by_user(user)
 
     except Exception as e:
         logger.exception(e)
         return HttpResponse(status=500)
 
-    return HttpResponse(status=200)
+    return HttpResponse(status=response_code)
 
 
 def _find_user(nfc_serial: str) -> User:
@@ -110,51 +108,32 @@ def _find_qr(qr_uuid: str) -> QR:
     return QR.objects.get(uuid=qr_uuid)
 
 
-def _find_lockers(user: User) -> List[Locker]:
-    waiting_packages_qrs: List[QR] = user.qr_set.all()
-    lockers_with_package = [qr.locker for qr in waiting_packages_qrs]
-    return lockers_with_package
+def _find_locker(user: User) -> Locker:
+    qr: QR = QR.objects.get(recipient=user)
+    if qr is None:
+        return None
+    return qr.locker
 
 
 def _open_locker(locker_with_package: Locker) -> bool:
     return utils.request_to_open_locker(locker_with_package)
 
 
-def _open_lockers(lockers: List[Locker]) -> List[Locker]:
-    lockers_failed_to_open: List[Locker] = utils.request_to_open_multiple_lockers(
-        lockers
-    )
-    return lockers_failed_to_open
-
-
-def _handle_response(request, locker: Locker, success: bool) -> str:
+def _handle_response(request, locker: Locker, success: bool) -> int:
     """Handles displaying a response to the user if they request to open a locker using the website"""
-    if not success:
-        response: str = MessageTexts.FAILED_OPEN_LOCKER.format(locker.id)
-        messages.warning(request, response)
-    else:
-        response: str = MessageTexts.SUCCESS
-    return response
+    if success:
+        return 200 + locker.id
+
+    response: str = MessageTexts.FAILED_OPEN_LOCKER.format(locker.id)
+    messages.warning(request, response)
+    return 500
 
 
-def _handle_response_multiple(request, lockers_failed_to_open: List[Locker]) -> str:
-    for locker in lockers_failed_to_open:
-        messages.warning(request, MessageTexts.FAILED_OPEN_LOCKER.format(locker.id))
-    response: str = (
-        MessageTexts.FAILED_AT_LEAST_ONE
-        if len(lockers_failed_to_open)
-        else MessageTexts.SUCCESS
-    )
-    return response
+def _cleanup_by_user(user: User) -> None:
+    qr: QR = QR.objects.get(recipient=user)
+    _cleanup(qr)
 
 
 def _cleanup(consumed_qr: QR) -> None:
-    consumed_qr.locker.occupied = False
-    consumed_qr.locker.save()
+    utils.free_locker(consumed_qr.locker)
     consumed_qr.delete()
-
-
-def _cleanup_multiple(opened_lockers: List[Locker]) -> None:
-    consumed_qrs: QuerySet = QR.objects.filter(locker__in=opened_lockers)
-    for qr in consumed_qrs:
-        _cleanup(qr)

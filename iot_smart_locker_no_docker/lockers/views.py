@@ -9,7 +9,7 @@ from django.views.generic import FormView, TemplateView
 
 from iot_smart_locker_no_docker.lockers import utils
 from iot_smart_locker_no_docker.lockers.forms import LockerDepositForm
-from iot_smart_locker_no_docker.lockers.models import QR, Locker
+from iot_smart_locker_no_docker.lockers.models import QR
 
 User = get_user_model()
 
@@ -31,22 +31,22 @@ class LockerDepositRequestView(LoginRequiredMixin, FormView):
     def form_valid(self, form: LockerDepositForm) -> HttpResponse:
         # generate QR
         recipient_user: User = form.get_recipient_user()
-        locker: Locker = utils.get_unoccupied_locker()
+        locker, qr = utils.find_locker_for_deposit(recipient_user)
         if locker is None:
             messages.warning(self.request, self.MessageTexts.NO_LOCKER_AVAILABLE)
             return HttpResponseRedirect(reverse_lazy(self.failure_url))
-        qr: QR = QR(recipient=recipient_user, locker=locker)
+
+        if qr is None:  # user doesn't have a waiting locker
+            qr: QR = QR(recipient=recipient_user, locker=locker)
 
         # open locker
-        if not utils.request_to_open_locker(locker):
-            messages.warning(self.request, self.MessageTexts.REST_ERROR)
-            return HttpResponseRedirect(reverse_lazy(self.failure_url))
+        utils.request_to_open_locker(locker)
 
         # notify recipient
         utils.send_qr_via_email(qr, recipient_user.email)
 
         # change locker status to occupied
-        utils.toggle_locker_status(locker)
+        utils.occupy_locker(locker)
 
         qr.save()
         # https://stackoverflow.com/questions/26483026/how-to-pass-context-data-in-success-url
