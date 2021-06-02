@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Locker allocated{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-center">
+
+    <h1>Something went wrong...</h1>
+    <h6>We're very sorry. Please try again later.</h6>
+  </div>
+
+  <div class="d-flex justify-content-center">
+  </div>
+
+  <div class="d-flex justify-content-center">
+    <a href="{{ request.META.HTTP_REFERER }}" class="btn btn-primary">Back</a>
+  </div>
+
+{% endblock %}

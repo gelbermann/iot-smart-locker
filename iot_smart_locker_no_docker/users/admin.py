@@ -29,6 +29,7 @@ class UserAdmin(auth_admin.UserAdmin):
             },
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
+        (_("App-related data"), {"fields": ("nfc_serial",)}),
     )
-    list_display = ["username", "name", "is_superuser"]
+    list_display = ["username", "name", "nfc_serial", "is_superuser"]
     search_fields = ["name"]

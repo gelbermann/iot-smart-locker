@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Locker allocated{% endblock %}
+
+{% block content %}
+  {% comment %}
+   TODO reformat file - delivery man doens't need the QR, only needs to know its been sent.
+     (For now I'm keeping the QR here for debugging purposes)
+  {% endcomment %}
+
+  <div class="d-flex justify-content-center">
+    <h1>Locker allocated!</h1>
+  </div>
+
+  <div class="d-flex justify-content-center">
+    <h6>Pleas deposit your package. The following QR code has been sent to the recipient:</h6>
+  </div>
+
+  {% include "lockers/components/qr.html" %}
+
+{% endblock %}
