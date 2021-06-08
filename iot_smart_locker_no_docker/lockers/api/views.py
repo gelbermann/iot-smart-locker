@@ -54,9 +54,9 @@ def open_single_locker_with_qr(request, uuid: str):
 
     except Exception as e:
         logger.exception(e)
-        return HttpResponse(status=response_code)
+        return HttpResponse(status=500)
 
-    return HttpResponse(status=200)
+    return HttpResponse(status=response_code)
 
 
 @api_view(("GET",))
