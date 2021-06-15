@@ -3,6 +3,7 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.http import HttpResponse
+from django.shortcuts import render
 from rest_framework.decorators import (
     api_view,
     authentication_classes,
@@ -98,6 +99,11 @@ def open_single_locker_with_nfc(request, serial: str):
         return HttpResponse(status=500)
 
     return HttpResponse(status=response_code)
+
+
+def show_connection_error_page(request):
+    logger.warning("Redirecting user to the connection error page :(")
+    return render(request, "500.html")
 
 
 def _find_user(nfc_serial: str) -> User:

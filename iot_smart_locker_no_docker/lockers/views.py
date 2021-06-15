@@ -40,7 +40,10 @@ class LockerDepositRequestView(LoginRequiredMixin, FormView):
             qr: QR = QR(recipient=recipient_user, locker=locker)
 
         # open locker
-        utils.request_to_open_locker(locker)
+        try:
+            utils.request_to_open_locker(locker)
+        except ConnectionError:
+            return HttpResponseRedirect(reverse_lazy("lockers:connection_error"))
 
         # notify recipient
         utils.send_qr_via_email(qr, recipient_user.email)

@@ -4,6 +4,7 @@ from django.views.generic import TemplateView
 from iot_smart_locker_no_docker.lockers.api.views import (
     open_single_locker_with_nfc,
     open_single_locker_with_qr,
+    show_connection_error_page,
 )
 from iot_smart_locker_no_docker.lockers.views import (
     LockerDepositRequestView,
@@ -41,4 +42,5 @@ urlpatterns = [
         view=open_single_locker_with_nfc,
         name="collect_with_nfc",
     ),
+    path("connection_error", view=show_connection_error_page, name="connection_error"),
 ]

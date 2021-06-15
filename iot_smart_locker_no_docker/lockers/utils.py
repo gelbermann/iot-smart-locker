@@ -89,7 +89,7 @@ def retry(func, max_attempts: int = 10, delay: float = 0.25, **kwargs):
         else:
             return
     logger.warning("All attempts failed!")
-    assert False
+    raise ConnectionError()
 
 
 def request_with_retry(data, headers, url):
