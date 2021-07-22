@@ -18,15 +18,18 @@ class LockerAdmin(admin.ModelAdmin):
 
     # @admin.action(description="Set selected lockers to 'unoccupied'")    # can only be used in django>=3.2
     def free_lockers(self, request, queryset):
-        updated: int = queryset.update(occupied=False)
+        related_qrs = QR.objects.filter(locker__in=queryset)
+        related_qrs.delete()
+
+        updated_lockers_count: int = queryset.update(occupied=False)
         self.message_user(
             request,
             ngettext(
                 "%d locker was successfully marked as unoccupied.",
                 "%d lockers were successfully marked as unoccupied.",
-                updated,
+                updated_lockers_count,
             )
-            % updated,
+            % updated_lockers_count,
             messages.SUCCESS,
         )
 
